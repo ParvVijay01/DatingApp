@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "310395200467",
+    "project_id": "dating-app-ad802",
+    "storage_bucket": "dating-app-ad802.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:310395200467:android:9f498113d0d1f6fe780526",
+        "android_client_info": {
+          "package_name": "com.parv.datingapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPj7JVKrXdAp45nEpt4qaVqQ1sy7emMEc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
