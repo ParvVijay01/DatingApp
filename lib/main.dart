@@ -1,4 +1,6 @@
+import 'package:datingapp/authScreens/signup_screen.dart';
 import 'package:datingapp/firebase_options.dart';
+import 'package:datingapp/homeScreen/home_screend.dart';
 import 'package:datingapp/splashScreen/splash_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -23,7 +25,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const SplashScreen(),
+      home: const SignUpScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

@@ -1,10 +1,15 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'dart:developer';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:datingapp/Widgets/alert_box.dart';
 import 'package:datingapp/authScreens/login.dart';
-import 'package:datingapp/authScreens/singup_screen2.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:image_picker/image_picker.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -17,7 +22,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController nameController = TextEditingController();
-  TextEditingController numberController = TextEditingController();
+  TextEditingController clubController = TextEditingController();
 
   bool passwordVisible = false;
   @override
@@ -30,10 +35,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (nameController.text.length < 3) {
       AlertBox.CustomAlertbox(
           context, "Name should contain atleast 3 characters");
-    } else if (numberController.text.length < 10) {
-      AlertBox.CustomAlertbox(context, "Please enter a valid phone number");
     } else if (!emailController.text.contains("@")) {
       AlertBox.CustomAlertbox(context, "Invalid Email ID");
+    } else if (clubController.text.isEmpty) {
+      AlertBox.CustomAlertbox(
+          context, "Please enter a valib Club name / Organisations");
     } else if (passwordController.text.length < 6) {
       AlertBox.CustomAlertbox(
           context, "Password should contain atleast 6 characters");
@@ -41,26 +47,93 @@ class _SignUpScreenState extends State<SignUpScreen> {
       saveSignupinfo(
         emailController.text.toString(),
         passwordController.text.toString(),
+        nameController.text.toString(),
+        clubController.text.toString(),
       );
     }
   }
 
-  saveSignupinfo(String email, String password) async {
+  saveSignupinfo(
+      String email, String password, String name, String club) async {
     UserCredential? userCredential;
     try {
+      uploadData();
       userCredential = await FirebaseAuth.instance
           .createUserWithEmailAndPassword(email: email, password: password)
+          .then((value) =>
+              Fluttertoast.showToast(msg: "Account created successfully!!!"))
           .then(
             (value) => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => const SignUpScreen2(),
+                builder: (context) => const LoginScreen(),
               ),
             ),
           );
+
+      FirebaseFirestore.instance
+          .collection("Users")
+          .doc(email)
+          .set({"Email": email, "Name": name, "club": club});
     } on FirebaseAuthException catch (ex) {
       return AlertBox.CustomAlertbox(context, ex.code.toString());
     }
+  }
+
+  File? pickedImage;
+
+  showAlertBox() {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Pick image from"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                onTap: () {
+                  pickImage(ImageSource.camera);
+                  Navigator.pop(context);
+                },
+                leading: const Icon(Icons.camera),
+                title: const Text("Camera"),
+              ),
+              ListTile(
+                onTap: () {
+                  pickImage(ImageSource.gallery);
+                  Navigator.pop(context);
+                },
+                leading: const Icon(Icons.image),
+                title: const Text("Gallery"),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  uploadData() async {
+    UploadTask uploadTask = FirebaseStorage.instance
+        .ref("Profile Pics")
+        .child(emailController.text.toString())
+        .putFile(pickedImage!);
+    TaskSnapshot taskSnapshot = await uploadTask;
+    String url = await taskSnapshot.ref.getDownloadURL();
+    FirebaseFirestore.instance
+        .collection("Users")
+        .doc(emailController.text.toString())
+        .set({
+      "Club": clubController.text.toString(),
+      "Name": nameController.text.toString(),
+      "Email": emailController.text.toString(),
+      "Image": url,
+    }).then(
+      (value) => {
+        log("User Uploaded"),
+      },
+    );
   }
 
   @override
@@ -78,9 +151,27 @@ class _SignUpScreenState extends State<SignUpScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            Image.asset(
-              "images/signup.jpg",
-              height: 300,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 50, 0, 20),
+              child: InkWell(
+                onTap: () {
+                  showAlertBox();
+                },
+                child: pickedImage != null
+                    ? CircleAvatar(
+                        radius: 10,
+                        backgroundImage: FileImage(pickedImage!),
+                      )
+                    : const CircleAvatar(
+                        radius: 100,
+                        backgroundColor: Color(0xFFfdebe7),
+                        child: Icon(
+                          Icons.person,
+                          size: 80,
+                          color: Colors.black54,
+                        ),
+                      ),
+              ),
             ),
             const SizedBox(
               height: 20,
@@ -112,14 +203,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
               child: TextField(
-                controller: numberController,
+                controller: clubController,
                 cursorColor: Colors.black,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.text,
                 decoration: InputDecoration(
                   prefixIcon: const Icon(
-                    Icons.phone,
+                    Icons.person,
                   ),
-                  labelText: "Phone Number",
+                  labelText: "Club / Organisations",
                   labelStyle: const TextStyle(color: Colors.black),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
@@ -192,7 +283,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
             ),
             const SizedBox(
-              height: 20,
+              height: 40,
             ),
             SizedBox(
               width: 200,
@@ -248,5 +339,20 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
       ),
     );
+  }
+
+  pickImage(ImageSource imageSource) async {
+    try {
+      final photo = await ImagePicker().pickImage(source: imageSource);
+      if (photo == null) {
+        return;
+      }
+      final tempImage = File(photo.path);
+      setState(() {
+        pickedImage = tempImage;
+      });
+    } catch (ex) {
+      log(ex.toString());
+    }
   }
 }
